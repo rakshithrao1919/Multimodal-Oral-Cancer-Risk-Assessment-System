@@ -1,0 +1,19 @@
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap');
+@import "tailwindcss";
+@import "./styles/auth.css";
+
+@theme {
+  --color-medicalPrimary: #0ea5e9;
+  --color-medicalSecondary: #f0f9ff;
+  --color-danger: #ef4444;
+  --color-safe: #22c55e;
+  --color-warning: #eab308;
+}
+
+body {
+  margin: 0;
+  font-family: "DM Sans", "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--color-slate-50);
+}
