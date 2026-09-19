@@ -5,5 +5,8 @@ from fastapi import APIRouter
 api_router = APIRouter()
 
 from app.api.endpoints import predictions
+from app.api.endpoints import patients
 
 api_router.include_router(predictions.router, prefix="/predict", tags=["predict"])
+api_router.include_router(patients.router, prefix="/patients", tags=["patients"])
+

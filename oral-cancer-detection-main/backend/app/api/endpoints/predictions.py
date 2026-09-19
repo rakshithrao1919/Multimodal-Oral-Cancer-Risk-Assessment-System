@@ -167,6 +167,8 @@ async def predict_oral_cancer_multimodal(
     intra_oral_image: Optional[UploadFile] = File(default=None),
     clinical_report: Optional[UploadFile] = File(default=None),
     gene_report: Optional[UploadFile] = File(default=None),
+    patient_id: Optional[str] = Form(default=None),
+    patient_name: Optional[str] = Form(default=None),
     current_user=Depends(get_current_user),
     supabase: Optional[Client] = Depends(get_supabase),
 ):
@@ -191,12 +193,28 @@ async def predict_oral_cancer_multimodal(
             intra_oral_bytes, histopathology_bytes, clin_bytes, gene_bytes
         )
 
+        # Persist prediction linked to the patient when patient_id is provided
+        if supabase is not None and patient_id:
+            try:
+                supabase.table("predictions").insert({
+                    "user_id": current_user.id,
+                    "patient_id": patient_id,
+                    "patient_name": patient_name or "",
+                    "final_risk_score": f_risk,
+                    "base_model_predictions": b_preds,
+                    "explainability_attention": ext_att,
+                    "feature_dependencies": f_deps,
+                    "clinical_insight": c_insight,
+                }).execute()
+            except Exception as db_err:
+                print(f"[Warning] Failed to save prediction to DB: {db_err}")
+
         return PredictionResponse(
             final_risk_score=f_risk,
             base_model_predictions=b_preds,
             explainability_attention=ext_att,
             feature_dependencies=f_deps,
-            patient_id=current_user.id,
+            patient_id=patient_id or current_user.id,
             clinical_insight=c_insight,
         )
 
@@ -209,4 +227,26 @@ async def predict_oral_cancer_multimodal(
         if intra_oral_image:     await intra_oral_image.close()
         if clinical_report:      await clinical_report.close()
         if gene_report:          await gene_report.close()
+
+
+@router.get("/history/{patient_id}")
+def get_prediction_history(
+    patient_id: str,
+    current_user=Depends(get_current_user),
+    supabase: Optional[Client] = Depends(get_supabase),
+):
+    """Fetch all predictions for a given patient."""
+    if supabase is None:
+        return []
+    try:
+        result = (
+            supabase.table("predictions")
+            .select("id,final_risk_score,base_model_predictions,explainability_attention,feature_dependencies,clinical_insight,created_at")
+            .eq("patient_id", patient_id)
+            .order("created_at", desc=True)
+            .execute()
+        )
+        return _extract_rows(result)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch history: {exc}")
 
