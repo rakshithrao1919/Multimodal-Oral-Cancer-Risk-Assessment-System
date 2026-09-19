@@ -1,113 +1,167 @@
-# Oral Cancer Detection
+# Multimodal Oral Cancer Risk Assessment System
 
-FastAPI + React prototype for multimodal oral-cancer risk assessment with:
+A full-stack clinical decision support prototype combining deep learning vision models, tabular genomic/clinical classifiers, attention-based fusion, and Gemini-powered explainability for early oral squamous cell carcinoma (OSCC) risk assessment.
 
-- Supabase authentication
-- Tabular and image-informed prediction inputs
-- Ensemble model execution with deterministic fusion fallback
-- Gemini-powered clinical summaries with local fallback text
+---
 
-## Current Architecture
+## Key Features
+
+- **👥 Patient Management**:
+  - ChatGPT-style collapsible left sidebar for browsing and searching patients.
+  - Quick patient registration modal (Name, Age, Gender, Phone) with validation.
+  - Dedicated patient profiles showing visit frequency and latest risk status.
+
+- **📋 Patient History & Timeline**:
+  - Persistent consultation and scan history linked to each patient.
+  - Interactive timeline showing historical risk progression over time.
+  - One-click access to reload and review any previous scan and report.
+
+- **📊 Risk Analytics**:
+  - Interactive risk gauge displaying overall malignancy probability (Low / Moderate / High).
+  - Model consensus bar chart comparing predictions across multimodal classifiers (Histopathology, Intra-oral, Clinical, Genomic).
+  - Longitudinal risk progression trendline tracking patient status across visits.
+
+- **🧠 AI Explainability (XAI)**:
+  - Attention distribution radar chart displaying modality fusion weights.
+  - Feature dependency breakdown highlighting critical risk drivers.
+  - Gemini-powered natural language clinical insight and follow-up recommendations.
+
+- **📄 Medical Reports**:
+  - Clean, clinical diagnostic summary report.
+  - Instant **Print / Save as PDF** support for electronic health records (EHR).
+
+---
+
+## Architecture
 
 ### Frontend
-
-- Vite
-- React 19
-- React Router
-- Tailwind CSS v4 utilities
-- Supabase JS client
-
-Main flow:
-
-1. User signs in through Supabase.
-2. Doctor dashboard fetches the backend schema.
-3. User uploads intra-oral and histopathology images plus clinical/genomic JSON.
-4. Frontend submits a multipart request to the FastAPI backend.
+- **Framework**: React 19 + Vite
+- **Routing**: React Router
+- **Styling**: Vanilla CSS with modern dark glassmorphism design system
+- **State & Auth**: Supabase JS client with local demo fallback mode
 
 ### Backend
+- **Framework**: FastAPI (Python 3.10+)
+- **Database / Auth**: Supabase (PostgreSQL + PostgREST + Auth)
+- **ML / Deep Learning**: PyTorch, torchvision, scikit-learn, LightGBM, joblib
+- **Generative AI / XAI**: Google Gemini API for clinical insights & multimodal vision inference
 
-- FastAPI
-- Supabase Python client for auth and prediction persistence
-- PyTorch / torchvision for model services
-- scikit-learn / LightGBM / joblib model loading
-- Optional Gemini summary generation
+---
 
-Main API routes:
+## API Endpoints
 
-- `GET /health`
-- `GET /api/v1/predict/schema`
-- `POST /api/v1/predict/`
-- `POST /api/v1/predict/multimodal`
+### Predictions (`/api/v1/predict`)
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/schema` | Retrieve expected tabular feature schema |
+| `POST` | `/` | Run prediction on 103-feature tabular vector |
+| `POST` | `/multimodal` | Multipart upload for images & reports linked to a patient |
+| `GET` | `/history/{patient_id}` | Fetch all past predictions for a specific patient |
 
-## Inference Notes
+### Patients (`/api/v1/patients`)
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/` | Create a new patient record |
+| `GET` | `/` | List all patients for the authenticated doctor |
+| `GET` | `/{patient_id}` | Retrieve patient detail with full prediction history |
+| `DELETE` | `/{patient_id}` | Delete patient and cascade-delete linked predictions |
 
-- Base model artifacts are loaded from `backend/app/ml/models/`.
-- If a trained fusion checkpoint is missing, the backend uses a deterministic weighted-average fallback instead of a randomly initialized fusion network.
-- If trained vision checkpoints are missing, image branches return a neutral score of `0.5` instead of pretending to provide a medical prediction.
-- If `GEMINI_API_KEY` is not configured, the backend returns a local deterministic clinical summary.
+---
 
-These fallbacks keep the app operational while making missing trained assets explicit in system behavior.
+## Database Setup (Supabase)
 
-## Environment Setup
+Before running the application with persistent storage, execute the migration script in your **Supabase Dashboard → SQL Editor**:
 
-### Backend
+The migration file is located at `backend/supabase_migration.sql`. It creates:
+- `patients` table with doctor linkage, metadata, and indexes.
+- `predictions` table storing risk scores, attention weights, model outputs, and clinical insights.
+- Row Level Security (RLS) policies allowing backend API access.
 
-Copy `backend/.env.example` to `backend/.env` and fill in:
+---
 
-- `SUPABASE_URL`
-- `SUPABASE_KEY`
-- `GEMINI_API_KEY` (optional)
-- `BACKEND_CORS_ORIGINS`
+## Getting Started
 
-Install dependencies:
+### Prerequisites
+- Python 3.10 or higher
+- Node.js 18 or higher & npm
+
+### 1. Backend Setup
 
 ```bash
 cd backend
+
+# Create and activate a virtual environment
+python -m venv .venv
+# Windows:
+.venv\Scripts\activate
+# Linux/macOS:
+source .venv/bin/activate
+
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-Run the API:
-
-```bash
-uvicorn app.main:app --reload
+Configure environment variables in `backend/.env`:
+```env
+PROJECT_NAME=Oral Cancer Multimodal AI System
+API_V1_STR=/api/v1
+SUPABASE_URL=https://<your-project-ref>.supabase.co
+SUPABASE_KEY=<your-supabase-anon-or-service-key>
+GEMINI_API_KEY=<your-google-gemini-api-key>
+BACKEND_CORS_ORIGINS=["http://localhost:5173", "http://127.0.0.1:5173"]
 ```
 
-### Frontend
+Run the backend server:
+```bash
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
 
-Copy `frontend/.env.example` to `frontend/.env` and fill in:
-
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY`
-- `VITE_API_URL`
-
-Install and run:
+### 2. Frontend Setup
 
 ```bash
 cd frontend
+
+# Install dependencies
 npm install
+```
+
+Configure environment variables in `frontend/.env`:
+```env
+VITE_SUPABASE_URL=https://<your-project-ref>.supabase.co
+VITE_SUPABASE_ANON_KEY=<your-supabase-anon-key>
+VITE_API_URL=http://127.0.0.1:8000/api/v1
+```
+
+Start the Vite development server:
+```bash
 npm run dev
 ```
 
+Open [http://localhost:5173](http://localhost:5173) in your browser.
+
+---
+
 ## Testing
 
-Backend:
-
+### Backend
 ```bash
 cd backend
 pytest
 ```
 
-
-Frontend:
-
+### Frontend
 ```bash
 cd frontend
 npm run lint
 npm run build
 ```
 
-## Repository Notes
+---
 
-- SQLAlchemy models are present in `backend/app/models`, but the active request path currently persists predictions through Supabase.
-- The admin page is intentionally lightweight and only reflects backend capabilities that exist in this repository.
-- Large model artifacts are already committed in the project; expect a heavier checkout than a typical web app.
+## Inference & Fallback Notes
+
+- **Missing Vision Checkpoints**: If PyTorch model weights are not loaded locally, multimodal inputs route directly to Gemini Vision for zero-shot clinical analysis.
+- **Fusion Fallback**: If trained fusion checkpoints are absent, the system applies a deterministic weighted ensemble average.
+- **Demo Mode**: If Supabase credentials are not provided, the frontend falls back to demo authentication (`demo@doctor.com` / `password`).
+- **Gemini Fallback**: If `GEMINI_API_KEY` is not present, deterministic local diagnostic text is generated based on model risk scores.
+
